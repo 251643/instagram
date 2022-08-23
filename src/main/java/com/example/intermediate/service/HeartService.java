@@ -3,7 +3,6 @@ package com.example.intermediate.service;
 import com.example.intermediate.dto.ResponseDto;
 import com.example.intermediate.jwt.TokenProvider;
 import com.example.intermediate.model.Article;
-import com.example.intermediate.model.Comment;
 import com.example.intermediate.model.Heart;
 import com.example.intermediate.model.Member;
 import com.example.intermediate.repository.ArticleRepository;

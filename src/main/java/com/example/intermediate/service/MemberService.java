@@ -55,11 +55,15 @@ public class MemberService {
 
   @Transactional
   public TokenDto login(LoginRequestDto requestDto, HttpServletResponse response) {
-    Member member = isPresentMember(requestDto.getEmail());
+   // Member member = isPresentMember(requestDto.getEmail());
+    Member member = memberRepository.findByEmail(requestDto.getEmail()).orElse(null);
+
     if (null == member) {
       throw new RuntimeException("사용자를 찾을 수 없습니다");
     }
-
+    if (!member.validatePassword(passwordEncoder, requestDto.getPassword())) {
+      throw new RuntimeException("사용자를 찾을 수 없습니다");
+    }
 
 //    if (null == member) {
 //      return ResponseDto.fail("MEMBER_NOT_FOUND",

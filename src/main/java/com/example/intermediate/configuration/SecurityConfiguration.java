@@ -50,8 +50,16 @@ public class SecurityConfiguration {
         .accessDeniedHandler(accessDeniedHandlerException)
 
         .and()
+        .headers()
+        .frameOptions()
+        .sameOrigin()
+
+        .and()
         .sessionManagement()
         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+
+        .and()
+        .cors()
 
         .and()
         .authorizeRequests()
