@@ -1,14 +1,13 @@
 package com.example.intermediate.service;
 
 import com.example.intermediate.dto.S3Dto;
-import com.example.intermediate.dto.article.ImageResponseDto;
 import com.example.intermediate.dto.comment.CommentResponseDto;
 import com.example.intermediate.dto.article.ArticleResponseDto;
 import com.example.intermediate.dto.article.ArticleRequestDto;
 import com.example.intermediate.dto.ResponseDto;
 import com.example.intermediate.jwt.TokenProvider;
 import com.example.intermediate.model.*;
-import com.example.intermediate.repository.ArticleRepository;
+import com.example.intermediate.repository.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,9 +15,6 @@ import java.util.List;
 import java.util.Optional;
 import javax.servlet.http.HttpServletRequest;
 
-import com.example.intermediate.repository.HeartRepository;
-import com.example.intermediate.repository.ImageRepository;
-import com.example.intermediate.repository.MemberRepository;
 import com.example.intermediate.shared.Time;
 import com.example.intermediate.shared.aws.S3Uploader;
 import lombok.RequiredArgsConstructor;
@@ -34,18 +30,22 @@ public class ArticleService {
   private final MemberRepository memberRepository;
   private final HeartRepository heartRepository;
   private final ImageRepository imageRepository;
+  private final DeletedUrlPathRepository deletedUrlPathRepository;
   private final TokenProvider tokenProvider;
   private final S3Uploader s3Uploader;
 
 
   @Transactional
-  public ResponseDto<?> createArticle(ArticleRequestDto requestDto,
+  public ArticleResponseDto createArticle(ArticleRequestDto requestDto,
                                       UserDetailsImpl userDetailsImpl,
                                       List<MultipartFile> multipartFileList) throws IOException {
     if (multipartFileList.isEmpty())
       throw new IllegalArgumentException("이미지 파일을 넣어주세요.");
     if (requestDto.getContent() == null)
       throw new IllegalArgumentException("내용을 입력하세요");
+
+
+    List<Image> imgList = new ArrayList<>();
 
     Article article = Article.builder()
             .content(requestDto.getContent())
@@ -61,23 +61,27 @@ public class ArticleService {
               .urlPath(s3Dto.getFileName())
               .article(article)
               .build();
+      imgList.add(image);
       imageRepository.save(image);
     }
 
-    return ResponseDto.success(
-        ArticleResponseDto.builder()
+    return ArticleResponseDto.builder()
             .id(article.getId())
             .content(article.getContent())
+            .isLike(false)
+            .imageList(imgList)
             .nickname(article.getMember().getNickname())
-            .build()
-    );
+            .timeMsg(Time.convertLocaldatetimeToTime(article.getCreatedAt()))
+            .heartCnt("0")
+            .commentCnt("0")
+            .build();
   }
 
   @Transactional(readOnly = true)
-  public ResponseDto<?> getArticle(Long id, UserDetailsImpl userDetailsImpl) {
+  public ArticleResponseDto getArticle(Long id, UserDetailsImpl userDetailsImpl) {
     Article article = isPresentArticle(id);
     if (null == article) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+      throw new RuntimeException("사용자를 찾을 수 없습니다");
     }
 
     List<CommentResponseDto> commentResponseDtoList = new ArrayList<>();
@@ -93,8 +97,7 @@ public class ArticleService {
       );
     }
 
-    return ResponseDto.success(
-        ArticleResponseDto.builder()
+    return ArticleResponseDto.builder()
             .id(article.getId())
             .content(article.getContent())
             .isLike(isPresentHeart(article, userDetailsImpl.getMember()))
@@ -104,12 +107,11 @@ public class ArticleService {
             .timeMsg(Time.convertLocaldatetimeToTime(article.getCreatedAt()))
             .heartCnt(String.valueOf(article.getHeartList().size()))
             .commentCnt(String.valueOf(article.getComments().size()))
-            .build()
-    );
+            .build();
   }
 
   @Transactional(readOnly = true)
-  public ResponseDto<?> getAllArticle(UserDetailsImpl userDetailsImpl) {
+  public List<ArticleResponseDto> getAllArticle(UserDetailsImpl userDetailsImpl) {
 
     List<Article> articleList = articleRepository.findAllByOrderByModifiedAtDesc();
 
@@ -127,9 +129,8 @@ public class ArticleService {
                       .commentCnt(String.valueOf(article.getComments().size()))
                       .build()
       );
-
     }
-    return ResponseDto.success(articleResponseDtoList);
+    return articleResponseDtoList;
   }
 
   @Transactional
@@ -146,16 +147,16 @@ public class ArticleService {
 
     Member member = validateMember(request);
     if (null == member) {
-      return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+      throw new RuntimeException("Token이 유효하지 않습니다.");
     }
 
     Article article = isPresentArticle(id);
     if (null == article) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+      throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
     }
 
     if (article.validateMember(member)) {
-      return ResponseDto.fail("BAD_REQUEST", "작성자만 수정할 수 있습니다.");
+      throw new RuntimeException("작성자만 수정할 수 있습니다.");
     }
 
     article.update(requestDto);
@@ -163,33 +164,34 @@ public class ArticleService {
   }
 
   @Transactional
-  public ResponseDto<?> deleteArticle(Long id, HttpServletRequest request) {
-    if (null == request.getHeader("Refresh-Token")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
+  public Long deleteArticle(Long id, HttpServletRequest request) {
 
-    if (null == request.getHeader("Authorization")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
 
     Member member = validateMember(request);
     if (null == member) {
-      return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+      throw new RuntimeException("Token이 유효하지 않습니다.");
     }
 
     Article article = isPresentArticle(id);
     if (null == article) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+      throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
     }
 
     if (article.validateMember(member)) {
-      return ResponseDto.fail("BAD_REQUEST", "작성자만 삭제할 수 있습니다.");
+      throw new RuntimeException("작성자만 수정할 수 있습니다.");
+    }
+
+    List<Image> imageList = imageRepository.findAllByArticle(article);
+    for (Image image : imageList) {
+      DeletedUrlPath deletedUrlPath = new DeletedUrlPath();
+      deletedUrlPath.setDeletedUrlPath(image.getUrlPath());
+
+      deletedUrlPathRepository.save(deletedUrlPath);
+      article.deleteImg(image);
     }
 
     articleRepository.delete(article);
-    return ResponseDto.success("delete success");
+    return id;
   }
 
   @Transactional(readOnly = true)
@@ -210,4 +212,11 @@ public class ArticleService {
     return heartRepository.existsByMemberAndArticle(member, article);
   }
 
+  public void removeS3Image() {
+    List<DeletedUrlPath> deletedUrlPathList = deletedUrlPathRepository.findAll();
+    for (DeletedUrlPath deletedUrlPath : deletedUrlPathList) {
+      s3Uploader.remove(deletedUrlPath.getDeletedUrlPath());
+    }
+    deletedUrlPathRepository.deleteAll();
+  }
 }
