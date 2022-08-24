@@ -54,6 +54,10 @@ public class Article extends Timestamped {
     this.content = articleRequestDto.getContent();
   }
 
+  public void deleteImg(Image image) {
+    this.imgUrlList.remove(image);
+  }
+
   public boolean validateMember(Member member) {
     return !this.member.equals(member);
   }

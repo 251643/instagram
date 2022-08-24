@@ -9,13 +9,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RequiredArgsConstructor
 @RestController
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class MemberController {
 
   private final MemberService memberService;
@@ -26,9 +24,9 @@ public class MemberController {
   }
 
   @RequestMapping(value = "/api/member/login", method = RequestMethod.POST)
-  public TokenDto login(@RequestBody @Valid LoginRequestDto requestDto,
+  public String login(@RequestBody @Valid LoginRequestDto requestDto,
                         HttpServletResponse response) {
-    return memberService.login(requestDto, response);
+    return memberService.login(requestDto, response).getNickname();
   }
 
 //  @RequestMapping(value = "/api/auth/member/reissue", method = RequestMethod.POST)

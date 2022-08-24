@@ -54,7 +54,7 @@ public class MemberService {
   }
 
   @Transactional
-  public TokenDto login(LoginRequestDto requestDto, HttpServletResponse response) {
+  public Member login(LoginRequestDto requestDto, HttpServletResponse response) {
    // Member member = isPresentMember(requestDto.getEmail());
     Member member = memberRepository.findByEmail(requestDto.getEmail()).orElse(null);
 
@@ -91,7 +91,7 @@ public class MemberService {
 //            .build()
 //    );
 
-    return tokenDto;
+    return member;
   }
 
 //  @Transactional

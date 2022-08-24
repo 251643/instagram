@@ -1,6 +1,7 @@
 package com.example.intermediate.service;
 
 import com.example.intermediate.dto.ResponseDto;
+import com.example.intermediate.dto.heart.HeartResponseDto;
 import com.example.intermediate.jwt.TokenProvider;
 import com.example.intermediate.model.Article;
 import com.example.intermediate.model.Heart;
@@ -20,23 +21,27 @@ public class HeartService {
     private final TokenProvider tokenProvider;
     private final ArticleRepository articleRepository;
     private final HeartRepository heartRepository;
-    public ResponseDto<?> addHeart(Long id, HttpServletRequest request) {
-        if (null == request.getHeader("Refresh-Token")) {
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
-        }
-        if (null == request.getHeader("Authorization")) {
-            return ResponseDto.fail("MEMBER_NOT_FOUND",
-                    "로그인이 필요합니다.");
-        }
+    public HeartResponseDto addHeart(Long id, HttpServletRequest request) {
+//        if (null == request.getHeader("Refresh-Token")) {
+//            return ResponseDto.fail("MEMBER_NOT_FOUND",
+//                    "로그인이 필요합니다.");
+//        }
+//        if (null == request.getHeader("Authorization")) {
+//            return ResponseDto.fail("MEMBER_NOT_FOUND",
+//                    "로그인이 필요합니다.");
+//        }
         Member member = validateMember(request);
         if (null == member) {
-            return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+            throw new RuntimeException("Token이 유효하지 않습니다.");
+            //return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
         }
         Article article = isPresentArticle(id);
         if (null == article) {
-            return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+            throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
         }
+
+        HeartResponseDto heartResponseDto = new HeartResponseDto();
+
         Heart heart = isPresentHeart(member, article);
         if (null == heart) {
             heartRepository.save(
@@ -45,11 +50,15 @@ public class HeartService {
                             .article(article)
                             .build()
             );
-            return ResponseDto.success("like success");
+            //return ResponseDto.success("like success");
         } else {
             heartRepository.delete(heart);
-            return ResponseDto.success("cancel like success");
+            //return ResponseDto.success("cancel like success");
         }
+        heartResponseDto.setHeartCnt(heartRepository.countByArticle(article));
+        heartResponseDto.setArticleId(id);
+
+        return heartResponseDto;
     }
 
     @Transactional(readOnly = true)

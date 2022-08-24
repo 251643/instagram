@@ -28,25 +28,26 @@ public class CommentService {
   private final ArticleService articleService;
 
   @Transactional
-  public ResponseDto<?> createComment(Long id, CommentRequestDto requestDto, HttpServletRequest request) {
-    if (null == request.getHeader("Refresh-Token")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
-
-    if (null == request.getHeader("Authorization")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
+  public CommentResponseDto createComment(Long id, CommentRequestDto requestDto, HttpServletRequest request) {
+//    if (null == request.getHeader("Refresh-Token")) {
+//      return ResponseDto.fail("MEMBER_NOT_FOUND",
+//          "로그인이 필요합니다.");
+//    }
+//
+//    if (null == request.getHeader("Authorization")) {
+//      return ResponseDto.fail("MEMBER_NOT_FOUND",
+//          "로그인이 필요합니다.");
+//    }
 
     Member member = validateMember(request);
     if (null == member) {
-      return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+      throw new RuntimeException("Token이 유효하지 않습니다.");
+      //return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
     }
 
     Article article = articleService.isPresentArticle(id);
     if (null == article) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+      throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
     }
 
     Comment comment = Comment.builder()
@@ -55,21 +56,19 @@ public class CommentService {
         .content(requestDto.getContent())
         .build();
     commentRepository.save(comment);
-    return ResponseDto.success(
-        CommentResponseDto.builder()
+    return CommentResponseDto.builder()
             .id(comment.getId())
             .nickname(comment.getMember().getNickname())
             .content(comment.getContent())
             .timeMsg(Time.convertLocaldatetimeToTime(comment.getCreatedAt()))
-            .build()
-    );
+            .build();
   }
 
   @Transactional(readOnly = true)
-  public ResponseDto<?> getAllCommentsByPost(Long postId) {
+  public List<CommentResponseDto> getAllCommentsByPost(Long postId) {
     Article article = articleService.isPresentArticle(postId);
     if (null == article) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 게시글 id 입니다.");
+      throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
     }
 
     List<Comment> commentList = commentRepository.findAllByArticle(article);
@@ -85,7 +84,7 @@ public class CommentService {
               .build()
       );
     }
-    return ResponseDto.success(commentResponseDtoList);
+    return commentResponseDtoList;
   }
 
   @Transactional
@@ -131,33 +130,24 @@ public class CommentService {
   }
 
   @Transactional
-  public ResponseDto<?> deleteComment(Long id, HttpServletRequest request) {
-    if (null == request.getHeader("Refresh-Token")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
-
-    if (null == request.getHeader("Authorization")) {
-      return ResponseDto.fail("MEMBER_NOT_FOUND",
-          "로그인이 필요합니다.");
-    }
-
+  public boolean deleteComment(Long id, HttpServletRequest request) {
     Member member = validateMember(request);
     if (null == member) {
-      return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
+      throw new RuntimeException("Token이 유효하지 않습니다.");
+      //return ResponseDto.fail("INVALID_TOKEN", "Token이 유효하지 않습니다.");
     }
 
     Comment comment = isPresentComment(id);
     if (null == comment) {
-      return ResponseDto.fail("NOT_FOUND", "존재하지 않는 댓글 id 입니다.");
+      throw new RuntimeException("존재하지 않는 게시글 id 입니다.");
     }
 
     if (comment.validateMember(member)) {
-      return ResponseDto.fail("BAD_REQUEST", "작성자만 수정할 수 있습니다.");
+      throw new RuntimeException("작성자만 수정할 수 있습니다.");
     }
 
     commentRepository.delete(comment);
-    return ResponseDto.success("success");
+    return true;
   }
 
   @Transactional(readOnly = true)

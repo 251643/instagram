@@ -27,7 +27,7 @@ public class MypageService {
     private final ArticleRepository articleRepository;
     private final HeartRepository heartRepository;
     @Transactional(readOnly = true)
-    public ResponseDto<?> getMyArticles(UserDetailsImpl userDetailsImpl) {
+    public List<ArticleResponseDto> getMyArticles(UserDetailsImpl userDetailsImpl) {
 
         List<Article> articleList = articleRepository.findAllByMemberOrderByModifiedAtDesc(userDetailsImpl.getMember());
 
@@ -46,12 +46,12 @@ public class MypageService {
                             .build()
             );
         }
-        return ResponseDto.success(articleResponseDtoList);
+        return articleResponseDtoList;
     }
 
 
     @Transactional(readOnly = true)
-    public ResponseDto<?> getMyHeartArticles(UserDetailsImpl userDetailsImpl) {
+    public List<ArticleResponseDto> getMyHeartArticles(UserDetailsImpl userDetailsImpl) {
 
         List<Heart> HeartList = heartRepository.findAllByMember(userDetailsImpl.getMember());
 
@@ -71,7 +71,7 @@ public class MypageService {
                             .build()
             );
         }
-        return ResponseDto.success(articleResponseDtoList);
+        return articleResponseDtoList;
     }
 
     public boolean isPresentHeart(Article article, Member member) {

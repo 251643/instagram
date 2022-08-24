@@ -1,4 +1,4 @@
-package com.example.intermediate.controller;
+package com.example.intermediate.shared;
 
 import com.example.intermediate.dto.ResponseDto;
 import org.springframework.web.bind.MethodArgumentNotValidException;
